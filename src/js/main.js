@@ -106,7 +106,11 @@ var list = document.getElementById("list");
 var player = document.getElementById("player");
 playlist.renderInElement(player, list);
 
-
+//variables for swipe delay
+var justSwiped = false;
+var swipeDelayTime = 60;
+var timeSinceSwipe = 0;
+var currentIndex = 0;
 
 
 
@@ -173,7 +177,7 @@ function concatJointPosition(id, position) {
 Leap.loop(options, function(frame) {
 	handString = '';
 	eventName = '';
-	listening = false;
+	listening = true;
 	frameString = concatData("frame_id", frame.id);
 	frameString += concatData("num_hands", frame.hands.length);
 	frameString += concatData("num_fingers", frame.fingers.length);
@@ -183,6 +187,9 @@ Leap.loop(options, function(frame) {
         hand = frame.hands[i];
         thumb = hand.fingers[0];
 
+
+
+        /*
         var eventName = '';
         var handY = hand.palmPosition[1];
         var thumbY = thumb.tipPosition[1];
@@ -227,11 +234,31 @@ Leap.loop(options, function(frame) {
 				listening = true;
 			}
 		}
+		*/
 
+		frameString += concatData("grabStrength",hand.grabStrength);
+		frameString += concatData("hand Roll", hand.roll());
+		if (hand.grabStrength > .8 && hand.palmVelocity[2] < 200)
+		{
+			if (!audio.paused)
+			{
+				audio.pause();
+				listening = false;
+			}
+		} else if (hand.grabStrength < .2 && hand.palmVelocity[2] < 200)
+		{
+			if (audio.paused)
+			{
+				audio.play();
+				listening = true;
+			}
+		}
+
+		frameString += concatData("Current Swipe Index",currentIndex);
 		 if (frame.gestures.length > 0) {
 		    for (var i = 0; i < frame.gestures.length; i++) {
 		      var gesture = frame.gestures[i];
-		      if(gesture.type == "swipe") {
+		      if(gesture.type == "swipe" && !justSwiped) {
 		          //Classify swipe as either horizontal or vertical
 		          var isHorizontal = Math.abs(gesture.direction[0]) > Math.abs(gesture.direction[1]);
 		          //Classify as right-left or up-down
@@ -240,10 +267,12 @@ Leap.loop(options, function(frame) {
 		              	  swipeDirection = "right";
 		                  playlist.next();
 		                  console.log(swipeDirection);
+		                  currentIndex ++;
 		              } else {
 		                  swipeDirection = "left";
 		             	  playlist.prev();
 		                  console.log(swipeDirection);
+		                  currentIndex --;
 		              }
 		          } else { //vertical
 		              if(gesture.direction[1] > 0){
@@ -251,9 +280,39 @@ Leap.loop(options, function(frame) {
 		              } else {
 		                  swipeDirection = "down";
 		              }                  
-		          }  
+		          }
+
+		          justSwiped = true;  
+		       } else 
+		       {
+			       	if (justSwiped)
+			  		{
+			  			timeSinceSwipe ++;
+			  			frameString += concatData("Time since Swipe", timeSinceSwipe);
+			  		} 
+
+			  		if (timeSinceSwipe >= swipeDelayTime)
+			  		{
+			  			justSwiped = false;
+			  			timeSinceSwipe = 0;
+			  			frameString += "Ending Swipe Delay <br>";
+			  		}
 		       }
 		     }
+		  } else 
+		  {
+		  		if (justSwiped)
+		  		{
+		  			timeSinceSwipe ++;
+			  		frameString += concatData("Time since Swipe", timeSinceSwipe);
+		  		} 
+
+		  		if (timeSinceSwipe >= swipeDelayTime)
+		  		{
+		  			justSwiped = false;
+			  		timeSinceSwipe = 0;
+			  		frameString += "Ending Swipe Delay <br>";
+		  		}
 		  }
 
 		handString += concatData('event_name', eventName);
