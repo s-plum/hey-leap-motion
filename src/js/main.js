@@ -1,3 +1,116 @@
+// create playlist class
+
+function Playlist() {
+  this.songs = [];
+  this.nowPlayingIndex = 0;
+}
+
+Playlist.prototype.add = function(song) {
+  this.songs.push(song);
+};
+
+Playlist.prototype.play = function() {
+  var currentSong = this.songs[this.nowPlayingIndex];
+  currentSong.play();
+};
+
+Playlist.prototype.stop = function(){
+  var currentSong = this.songs[this.nowPlayingIndex];
+  currentSong.stop();
+};
+
+Playlist.prototype.next = function() {
+  this.stop(); 
+  this.nowPlayingIndex++;
+  if(this.nowPlayingIndex === this.songs.length){
+    this.nowPlayingIndex = 0;
+  }
+  this.play();
+  this.renderInElement(player, list);
+};
+
+Playlist.prototype.prev = function() {
+  this.stop(); 
+  this.nowPlayingIndex--;
+  if(this.nowPlayingIndex < 0){
+    this.nowPlayingIndex = 0;
+  }
+  this.play();
+  this.renderInElement(player, list);
+};
+
+Playlist.prototype.renderInElement = function(player, list) {
+  player.innerHTML = "";
+  list.innerHTML = "";
+  var html = '<audio id="audio" autoplay="true" preload="auto" tabindex="0" controls="" >';
+  html += '<source src="/audio/';
+  html += this.songs[this.nowPlayingIndex].file;
+  html += '" type="audio/mp3"/></audio>';
+  player.innerHTML = html;
+  for(var i = 0; i < this.songs.length; i++){
+    var song = this.songs[i];
+    list.innerHTML += song.toHTML();
+  };
+};
+
+
+
+// create song class
+
+
+function Song(title, artist, file) {
+  this.title = title;
+  this.artist = artist;
+  this.file = file;
+  this.isPlaying = false;
+}
+
+
+Song.prototype.play = function() {
+  this.isPlaying = true;
+};
+
+Song.prototype.stop = function() {
+  this.isPlaying = false;
+};
+
+Song.prototype.toHTML = function() {
+  var htmlString = "<li";
+  if(this.isPlaying){
+    htmlString += " class='current'";
+  }
+  htmlString += ">";
+  htmlString += this.title + " - " + this.artist + "</li>";
+  
+  return htmlString;
+};
+
+
+
+
+// generate playlist
+
+
+var playlist = new Playlist();
+
+
+var superFreak = new Song("Super Freak", "Rick James", "super_freak.mp3");
+var tooYoung = new Song("Too Young", "Phoenix", "too_young.mp3");
+var dancingQueen = new Song("Dancing Queen", "Abba", "dancing_queen.mp3");
+var gimmeTwice = new Song("Gimme Twice", "The Royal Concept", "gimme_twice.mp3");
+var bohemianRhapsody = new Song("Bohemian Rhapsody", "Queen", "bohemian_rhapsody.mp3");
+
+playlist.songs.push(superFreak,tooYoung, dancingQueen, gimmeTwice, bohemianRhapsody);
+
+var list = document.getElementById("list");
+var player = document.getElementById("player");
+playlist.renderInElement(player, list);
+
+
+
+
+
+
 // declare dependencies
 var Leap = window.Leap = require('leapjs');
 var THREE = window.THREE = require('three');
@@ -47,10 +160,14 @@ function getFingerName(fingerType) {
 		break;
 	}
 }
+
+
     
 function concatJointPosition(id, position) {
 	return id + ": " + position[0] + ", " + position[1] + ", " + position[2] + "<br>";
 }
+
+
 
 //Loop to get back frame data from the device
 Leap.loop(options, function(frame) {
@@ -110,6 +227,34 @@ Leap.loop(options, function(frame) {
 				listening = true;
 			}
 		}
+
+		 if (frame.gestures.length > 0) {
+		    for (var i = 0; i < frame.gestures.length; i++) {
+		      var gesture = frame.gestures[i];
+		      if(gesture.type == "swipe") {
+		          //Classify swipe as either horizontal or vertical
+		          var isHorizontal = Math.abs(gesture.direction[0]) > Math.abs(gesture.direction[1]);
+		          //Classify as right-left or up-down
+		          if(isHorizontal){
+		              if(gesture.direction[0] > 0){
+		              	  swipeDirection = "right";
+		                  playlist.next();
+		                  console.log(swipeDirection);
+		              } else {
+		                  swipeDirection = "left";
+		             	  playlist.prev();
+		                  console.log(swipeDirection);
+		              }
+		          } else { //vertical
+		              if(gesture.direction[1] > 0){
+		                  swipeDirection = "up";
+		              } else {
+		                  swipeDirection = "down";
+		              }                  
+		          }  
+		       }
+		     }
+		  }
 
 		handString += concatData('event_name', eventName);
 		if (listening && Math.abs(hand.direction[1]) < 0.5) {
